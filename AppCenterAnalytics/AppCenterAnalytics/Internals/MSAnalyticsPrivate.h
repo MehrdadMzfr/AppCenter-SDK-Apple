@@ -10,13 +10,13 @@ NS_ASSUME_NONNULL_BEGIN
 @interface MSAnalytics () <MSSessionTrackerDelegate>
 
 /**
- *  Session tracking component.
+ * Session tracking component.
  */
 @property(nonatomic) MSSessionTracker *sessionTracker;
 
 @property(nonatomic) BOOL autoPageTrackingEnabled;
 
-@property(nonatomic, nullable) id <MSAnalyticsDelegate> delegate;
+@property(nonatomic, nullable) id<MSAnalyticsDelegate> delegate;
 
 /**
  * Transmission targets.
@@ -29,21 +29,45 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic) MSAnalyticsTransmissionTarget *defaultTransmissionTarget;
 
 /**
+ * The channel unit for common schema logs.
+ */
+@property(nonatomic) id<MSChannelUnitProtocol> oneCollectorChannelUnit;
+
+/**
  * Track an event.
  *
- * @param eventName  event name.
- * @param properties dictionary of properties.
+ * @param eventName  Event name.
+ * @param properties Dictionary of properties.
  * @param transmissionTarget Transmission target to associate with the event.
+ * @param flags      Optional flags. Events tracked with the MSFlagsPersistenceCritical flag will take precedence over all other events in
+ * storage. An event tracked with this option will only be dropped if storage must make room for a newer event that is also marked with the
+ * MSFlagsPersistenceCritical flag.
  */
-- (void)   trackEvent:(NSString *)eventName
-       withProperties:(nullable NSDictionary<NSString *, NSString *> *)properties
-forTransmissionTarget:(nullable MSAnalyticsTransmissionTarget *)transmissionTarget;
+- (void)trackEvent:(NSString *)eventName
+           withProperties:(nullable NSDictionary<NSString *, NSString *> *)properties
+    forTransmissionTarget:(nullable MSAnalyticsTransmissionTarget *)transmissionTarget
+                    flags:(MSFlags)flags;
+
+/**
+ * Track an event with typed properties.
+ *
+ * @param eventName  Event name.
+ * @param properties Typed properties.
+ * @param transmissionTarget Transmission target to associate with the event.
+ * @param flags      Optional flags. Events tracked with the MSFlagsPersistenceCritical flag will take precedence over all other events in
+ * storage. An event tracked with this option will only be dropped if storage must make room for a newer event that is also marked with the
+ * MSFlagsPersistenceCritical flag.
+ */
+- (void)trackEvent:(NSString *)eventName
+      withTypedProperties:(nullable MSEventProperties *)properties
+    forTransmissionTarget:(nullable MSAnalyticsTransmissionTarget *)transmissionTarget
+                    flags:(MSFlags)flags;
 
 /**
  * Track a page.
  *
- * @param pageName  page name.
- * @param properties dictionary of properties.
+ * @param pageName  Page name.
+ * @param properties Dictionary of properties.
  */
 - (void)trackPage:(NSString *)pageName withProperties:(nullable NSDictionary<NSString *, NSString *> *)properties;
 
@@ -57,8 +81,7 @@ forTransmissionTarget:(nullable MSAnalyticsTransmissionTarget *)transmissionTarg
 - (MSAnalyticsTransmissionTarget *)transmissionTargetForToken:(NSString *)token;
 
 /**
- * Method to reset the singleton when running unit tests only. So calling
- * sharedInstance returns a fresh instance.
+ * Method to reset the singleton when running unit tests only. So calling sharedInstance returns a fresh instance.
  */
 + (void)resetSharedInstance;
 

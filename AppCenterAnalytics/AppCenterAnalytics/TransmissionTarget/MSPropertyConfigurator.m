@@ -1,4 +1,4 @@
-#import "MSPropertyConfiguratorPrivate.h"
+#import <Foundation/Foundation.h>
 
 #if TARGET_OS_OSX
 #import <IOKit/IOKitLib.h>
@@ -10,10 +10,16 @@
 #import "MSAnalyticsTransmissionTargetInternal.h"
 #import "MSAnalyticsTransmissionTargetPrivate.h"
 #import "MSAppExtension.h"
-#import "MSCommonSchemaLog.h"
 #import "MSCSExtensions.h"
+#import "MSCommonSchemaLog.h"
+#import "MSConstants+Internal.h"
 #import "MSDeviceExtension.h"
+#import "MSEventPropertiesInternal.h"
 #import "MSLogger.h"
+#import "MSPropertyConfiguratorPrivate.h"
+#import "MSStringTypedProperty.h"
+#import "MSUserExtension.h"
+#import "MSUserIdContext.h"
 
 @implementation MSPropertyConfigurator
 
@@ -23,11 +29,10 @@ static const char deviceIdPrefix = 'u';
 static const char deviceIdPrefix = 'i';
 #endif
 
-- (instancetype)initWithTransmissionTarget:
-    (MSAnalyticsTransmissionTarget *)transmissionTarget {
+- (instancetype)initWithTransmissionTarget:(MSAnalyticsTransmissionTarget *)transmissionTarget {
   if ((self = [super init])) {
     _transmissionTarget = transmissionTarget;
-    _eventProperties = [NSMutableDictionary<NSString *, NSString *> new];
+    _eventProperties = [MSEventProperties new];
   }
   return self;
 }
@@ -44,26 +49,50 @@ static const char deviceIdPrefix = 'i';
   _appLocale = appLocale;
 }
 
-- (void)setEventPropertyString:(NSString *)propertyValue
-                        forKey:(NSString *)propertyKey {
+- (void)setUserId:(NSString *)userId {
+  if ([MSUserIdContext isUserIdValidForOneCollector:userId]) {
+    NSString *prefixedUserId = [MSUserIdContext prefixedUserIdFromUserId:userId];
+    _userId = prefixedUserId;
+  }
+}
+
+- (void)setEventPropertyString:(NSString *)propertyValue forKey:(NSString *)propertyKey {
   @synchronized([MSAnalytics sharedInstance]) {
-    if (!propertyValue || !propertyKey) {
-      MSLogError([MSAnalytics logTag],
-                 @"Event property keys and values cannot be nil.");
-      return;
-    }
-    self.eventProperties[propertyKey] = propertyValue;
+    [self.eventProperties setString:propertyValue forKey:propertyKey];
+  }
+}
+
+- (void)setEventPropertyDouble:(double)propertyValue forKey:(NSString *)propertyKey {
+  @synchronized([MSAnalytics sharedInstance]) {
+    [self.eventProperties setDouble:propertyValue forKey:propertyKey];
+  }
+}
+
+- (void)setEventPropertyInt64:(int64_t)propertyValue forKey:(NSString *)propertyKey {
+  @synchronized([MSAnalytics sharedInstance]) {
+    [self.eventProperties setInt64:propertyValue forKey:propertyKey];
+  }
+}
+
+- (void)setEventPropertyBool:(BOOL)propertyValue forKey:(NSString *)propertyKey {
+  @synchronized([MSAnalytics sharedInstance]) {
+    [self.eventProperties setBool:propertyValue forKey:propertyKey];
+  }
+}
+
+- (void)setEventPropertyDate:(NSDate *)propertyValue forKey:(NSString *)propertyKey {
+  @synchronized([MSAnalytics sharedInstance]) {
+    [self.eventProperties setDate:propertyValue forKey:propertyKey];
   }
 }
 
 - (void)removeEventPropertyForKey:(NSString *)propertyKey {
   @synchronized([MSAnalytics sharedInstance]) {
     if (!propertyKey) {
-      MSLogError([MSAnalytics logTag],
-                 @"Event property key to remove cannot be nil.");
+      MSLogError([MSAnalytics logTag], @"Event property key to remove cannot be nil.");
       return;
     }
-    [self.eventProperties removeObjectForKey:propertyKey];
+    [self.eventProperties.properties removeObjectForKey:propertyKey];
   }
 }
 
@@ -73,25 +102,14 @@ static const char deviceIdPrefix = 'i';
 
 #pragma mark - MSChannelDelegate
 
-- (void)channel:(id<MSChannelProtocol>)__unused channel
-     prepareLog:(id<MSLog>)log {
+- (void)channel:(id<MSChannelProtocol>)__unused channel prepareLog:(id<MSLog>)log {
   MSAnalyticsTransmissionTarget *target = self.transmissionTarget;
-  if (target && [log isKindOfClass:[MSCommonSchemaLog class]] &&
-      [target isEnabled]) {
-
-    // TODO Find a better way to override properties.
-
-    // Only override properties for owned target.
-    if (![log.transmissionTargetTokens
-            containsObject:target.transmissionTargetToken]) {
-      return;
-    }
+  if (target && [log isKindOfClass:[MSCommonSchemaLog class]] && [target isEnabled] && [log.tag isEqual:target]) {
 
     // Override the application version.
     while (target) {
       if (target.propertyConfigurator.appVersion) {
-        ((MSCommonSchemaLog *)log).ext.appExt.ver =
-            target.propertyConfigurator.appVersion;
+        ((MSCommonSchemaLog *)log).ext.appExt.ver = target.propertyConfigurator.appVersion;
         break;
       }
       target = target.parentTarget;
@@ -101,8 +119,7 @@ static const char deviceIdPrefix = 'i';
     target = self.transmissionTarget;
     while (target) {
       if (target.propertyConfigurator.appName) {
-        ((MSCommonSchemaLog *)log).ext.appExt.name =
-            target.propertyConfigurator.appName;
+        ((MSCommonSchemaLog *)log).ext.appExt.name = target.propertyConfigurator.appName;
         break;
       }
       target = target.parentTarget;
@@ -112,15 +129,24 @@ static const char deviceIdPrefix = 'i';
     target = self.transmissionTarget;
     while (target) {
       if (target.propertyConfigurator.appLocale) {
-        ((MSCommonSchemaLog *)log).ext.appExt.locale =
-            target.propertyConfigurator.appLocale;
+        ((MSCommonSchemaLog *)log).ext.appExt.locale = target.propertyConfigurator.appLocale;
+        break;
+      }
+      target = target.parentTarget;
+    }
+
+    // Override the userId.
+    target = self.transmissionTarget;
+    while (target) {
+      if (target.propertyConfigurator.userId) {
+        ((MSCommonSchemaLog *)log).ext.userExt.localId = target.propertyConfigurator.userId;
         break;
       }
       target = target.parentTarget;
     }
 
     // The device ID must not be inherited from parent transmission targets.
-    [((MSCommonSchemaLog *)log)ext].deviceExt.localId = self.deviceId;
+    [((MSCommonSchemaLog *)log) ext].deviceExt.localId = self.deviceId;
   }
 }
 
@@ -152,6 +178,16 @@ static const char deviceIdPrefix = 'i';
   baseIdentifier = [[[UIDevice currentDevice] identifierForVendor] UUIDString];
 #endif
   return [NSString stringWithFormat:@"%c:%@", deviceIdPrefix, baseIdentifier];
+}
+
+- (void)mergeTypedPropertiesWith:(MSEventProperties *)mergedEventProperties {
+  @synchronized([MSAnalytics sharedInstance]) {
+    for (NSString *key in self.eventProperties.properties) {
+      if (!mergedEventProperties.properties[key]) {
+        mergedEventProperties.properties[key] = self.eventProperties.properties[key];
+      }
+    }
+  }
 }
 
 @end

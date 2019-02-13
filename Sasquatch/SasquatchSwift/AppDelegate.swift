@@ -7,6 +7,7 @@ import AppCenterAnalytics
 import AppCenterCrashes
 import AppCenterDistribute
 import AppCenterPush
+import UserNotifications
 
 enum StartupMode: Int {
   case APPCENTER
@@ -17,17 +18,46 @@ enum StartupMode: Int {
 }
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate, MSCrashesDelegate, MSDistributeDelegate, MSPushDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, MSCrashesDelegate, MSDistributeDelegate, MSPushDelegate, UNUserNotificationCenterDelegate {
+
+  private var notificationPresentationCompletionHandler: Any?
+  private var notificationResponseCompletionHandler: Any?
 
   var window: UIWindow?
 
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
 
-    // Customize App Center SDK.
+    if #available(iOS 10.0, *) {
+      UNUserNotificationCenter.current().delegate = self
+    }
     MSCrashes.setDelegate(self)
     MSDistribute.setDelegate(self)
     MSPush.setDelegate(self)
     MSAppCenter.setLogLevel(MSLogLevel.verbose)
+
+    // Set max storage size.
+    let storageMaxSize = UserDefaults.standard.object(forKey: kMSStorageMaxSizeKey) as? Int
+    if storageMaxSize != nil {
+      MSAppCenter.setMaxStorageSize(storageMaxSize!, completionHandler: { success in
+        DispatchQueue.main.async {
+          if success {
+            let realSize = Int64(ceil(Double(storageMaxSize!) / Double(kMSStoragePageSize))) * Int64(kMSStoragePageSize)
+            UserDefaults.standard.set(realSize, forKey: kMSStorageMaxSizeKey)
+          } else {
+
+            // Remove invalid value.
+            UserDefaults.standard.removeObject(forKey: kMSStorageMaxSizeKey)
+
+            // Show alert.
+            let alertController = UIAlertController(title: "Warning!",
+                                                    message: "The maximum size of the internal storage could not be set.",
+                                                    preferredStyle: .alert)
+            alertController.addAction(UIAlertAction(title: "OK", style: .default))
+            self.window?.rootViewController?.present(alertController, animated: true)
+          }
+        }
+      })
+    }
 
     // Start App Center SDK.
     let appSecret = "0dbca56b-b9ae-4d53-856a-7c2856137d85"
@@ -49,27 +79,33 @@ class AppDelegate: UIResponder, UIApplicationDelegate, MSCrashesDelegate, MSDist
     case .SKIP:
       break
     }
-    
+
+    // Set user id.
+    let userId = UserDefaults.standard.string(forKey: kMSUserIdKey)
+    if userId != nil {
+      MSAppCenter.setUserId(userId);
+    }
+
     // Crashes Delegate.
     MSCrashes.setUserConfirmationHandler({ (errorReports: [MSErrorReport]) in
 
       // Show a dialog to the user where they can choose if they want to update.
       let alertController = UIAlertController(title: "Sorry about that!",
-                                              message: "Do you want to send an anonymous crash report so we can fix the issue?",
-                                              preferredStyle:.alert)
+              message: "Do you want to send an anonymous crash report so we can fix the issue?",
+              preferredStyle: .alert)
 
       // Add a "Don't send"-Button and call the notifyWithUserConfirmation-callback with MSUserConfirmationDontSend
-      alertController.addAction(UIAlertAction(title: "Don't send", style: .cancel) {_ in
+      alertController.addAction(UIAlertAction(title: "Don't send", style: .cancel) { _ in
         MSCrashes.notify(with: .dontSend)
       })
 
       // Add a "Send"-Button and call the notifyWithUserConfirmation-callback with MSUserConfirmationSend
-      alertController.addAction(UIAlertAction(title: "Send", style: .default) {_ in
+      alertController.addAction(UIAlertAction(title: "Send", style: .default) { _ in
         MSCrashes.notify(with: .send)
       })
 
       // Add a "Always send"-Button and call the notifyWithUserConfirmation-callback with MSUserConfirmationAlways
-      alertController.addAction(UIAlertAction(title: "Always send", style: .default) {_ in
+      alertController.addAction(UIAlertAction(title: "Always send", style: .default) { _ in
         MSCrashes.notify(with: .always)
       })
 
@@ -84,7 +120,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, MSCrashesDelegate, MSDist
     return true
   }
 
-  private func setAppCenterDelegate(){
+  private func setAppCenterDelegate() {
     let tabBarController = window?.rootViewController as? UITabBarController
     let delegate = AppCenterDelegateSwift()
     for controller in tabBarController!.viewControllers! {
@@ -106,7 +142,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, MSCrashesDelegate, MSDist
    * @return `YES` if the delegate successfully handled the request or `NO` if the attempt to open the URL resource
    * failed.
    */
-  func application(_ app: UIApplication, open url: URL, options: [UIApplicationOpenURLOptionsKey : Any] = [:]) -> Bool {
+  func application(_ app: UIApplication, open url: URL, options: [UIApplicationOpenURLOptionsKey: Any] = [:]) -> Bool {
     // Forward the URL.
     return MSDistribute.open(url)
   }
@@ -119,7 +155,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, MSCrashesDelegate, MSDist
     MSPush.didFailToRegisterForRemoteNotificationsWithError(error)
   }
 
-  func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable : Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+  func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
     let result: Bool = MSPush.didReceiveRemoteNotification(userInfo)
     if result {
       completionHandler(.newData)
@@ -160,23 +196,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate, MSCrashesDelegate, MSDist
 
   func crashes(_ crashes: MSCrashes!, willSend errorReport: MSErrorReport!) {
   }
-  
+
   func crashes(_ crashes: MSCrashes!, didSucceedSending errorReport: MSErrorReport!) {
   }
-  
+
   func crashes(_ crashes: MSCrashes!, didFailSending errorReport: MSErrorReport!, withError error: Error!) {
   }
-  
+
   func attachments(with crashes: MSCrashes, for errorReport: MSErrorReport) -> [MSErrorAttachmentLog] {
     var attachments = [MSErrorAttachmentLog]()
-    
+
     // Text attachment.
     let text = UserDefaults.standard.string(forKey: "textAttachment") ?? ""
     if !text.isEmpty {
       let textAttachment = MSErrorAttachmentLog.attachment(withText: text, filename: "user.log")!
       attachments.append(textAttachment)
     }
-    
+
     // Binary attachment.
     let referenceUrl = UserDefaults.standard.url(forKey: "fileAttachment")
     if referenceUrl != nil {
@@ -184,7 +220,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, MSCrashesDelegate, MSDist
       if asset != nil {
         let options = PHImageRequestOptions()
         options.isSynchronous = true
-        PHImageManager.default().requestImageData(for: asset!, options: options, resultHandler: {(imageData, dataUTI, orientation, info) -> Void in
+        PHImageManager.default().requestImageData(for: asset!, options: options, resultHandler: { (imageData, dataUTI, orientation, info) -> Void in
           let pathExtension = NSURL(fileURLWithPath: dataUTI!).pathExtension
           let uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, pathExtension! as NSString, nil)?.takeRetainedValue()
           let mime = UTTypeCopyPreferredTagWithClass(uti!, kUTTagClassMIMEType)?.takeRetainedValue() as NSString?
@@ -205,16 +241,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate, MSCrashesDelegate, MSDist
 
       // Show a dialog to the user where they can choose if they want to update.
       let alertController = UIAlertController(title: NSLocalizedString("distribute_alert_title", tableName: "Sasquatch", comment: ""),
-                                              message: NSLocalizedString("distribute_alert_message", tableName: "Sasquatch", comment: ""),
-                                              preferredStyle:.alert)
+              message: NSLocalizedString("distribute_alert_message", tableName: "Sasquatch", comment: ""),
+              preferredStyle: .alert)
 
       // Add a "Yes"-Button and call the notifyUpdateAction-callback with MSUserAction.update
-      alertController.addAction(UIAlertAction(title: NSLocalizedString("distribute_alert_yes", tableName: "Sasquatch", comment: ""), style: .cancel) {_ in
+      alertController.addAction(UIAlertAction(title: NSLocalizedString("distribute_alert_yes", tableName: "Sasquatch", comment: ""), style: .cancel) { _ in
         MSDistribute.notify(.update)
       })
 
       // Add a "No"-Button and call the notifyUpdateAction-callback with MSUserAction.postpone
-      alertController.addAction(UIAlertAction(title: NSLocalizedString("distribute_alert_no", tableName: "Sasquatch", comment: ""), style: .default) {_ in
+      alertController.addAction(UIAlertAction(title: NSLocalizedString("distribute_alert_no", tableName: "Sasquatch", comment: ""), style: .default) { _ in
         MSDistribute.notify(.postpone)
       })
 
@@ -225,25 +261,69 @@ class AppDelegate: UIResponder, UIApplicationDelegate, MSCrashesDelegate, MSDist
     return false
   }
 
-  // Push Delegate
+  // Native push delegates
 
+  @available(iOS 10.0, *)
+  func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    notificationPresentationCompletionHandler = completionHandler;
+    MSPush.didReceiveRemoteNotification(notification.request.content.userInfo)
+  }
+
+  @available(iOS 10.0, *)
+  func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+    notificationResponseCompletionHandler = completionHandler;
+    MSPush.didReceiveRemoteNotification(response.notification.request.content.userInfo)
+  }
+
+  // AppCenter Push Delegate
   func push(_ push: MSPush!, didReceive pushNotification: MSPushNotification!) {
+    
+    // Alert in foreground if requested from custom data.
+    if #available(iOS 10.0, *), notificationPresentationCompletionHandler != nil && pushNotification.customData["presentation"] == "alert" {
+      (notificationPresentationCompletionHandler as! (UNNotificationPresentationOptions) -> Void)(.alert)
+      notificationPresentationCompletionHandler = nil
+      return;
+    }
+    
+    // Create and show a popup from the notification payload.
     let title: String = pushNotification.title ?? ""
     var message: String = pushNotification.message ?? ""
     var customData: String = ""
     for item in pushNotification.customData {
-      customData =  ((customData.isEmpty) ? "" : "\(customData), ") + "\(item.key): \(item.value)"
+      customData = ((customData.isEmpty) ? "" : "\(customData), ") + "\(item.key): \(item.value)"
     }
     if (UIApplication.shared.applicationState == .background) {
-      NSLog("Notification received in background, title: \"\(title)\", message: \"\(message)\", custom data: \"\(customData)\"");
+      NSLog("Notification received in background (silent push), title: \"\(title)\", message: \"\(message)\", custom data: \"\(customData)\"");
     } else {
-      message =  message + ((customData.isEmpty) ? "" : "\n\(customData)")
+      if #available(iOS 10.0, *) {
+        if (!message.isEmpty) {
+          message += "\n"
+        }
+        if notificationResponseCompletionHandler != nil {
+          message += "Tapped notification"
+        } else {
+          message += "Received in foreground"
+        }
+      }
+      message += (customData.isEmpty ? "" : "\n\(customData)")
 
       let alertController = UIAlertController(title: title, message: message, preferredStyle: .alert)
       alertController.addAction(UIAlertAction(title: "OK", style: .cancel))
 
       // Show the alert controller.
       self.window?.rootViewController?.present(alertController, animated: true)
+    }
+    
+    // Call notification completion handlers.
+    if #available(iOS 10.0, *) {
+      if (notificationResponseCompletionHandler != nil){
+        (notificationResponseCompletionHandler as! () -> Void)()
+        notificationResponseCompletionHandler = nil
+      }
+      if (notificationPresentationCompletionHandler != nil){
+        (notificationPresentationCompletionHandler as! (UNNotificationPresentationOptions) -> Void)([])
+        notificationPresentationCompletionHandler = nil
+      }
     }
   }
 }

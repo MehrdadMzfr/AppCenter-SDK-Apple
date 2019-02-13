@@ -1,15 +1,113 @@
 # App Center SDK for iOS and macOS Change Log
 
-## Version 1.10.0 (Under active development)
+## Version 1.13.1
 
 ### AppCenter
 
-* **[Fix]** Add missing network request error logging.
+* **[Fix]** Fix a possible deadlock if the SDK is started from a background thread.
+
+___
+
+## Version 1.13.0
+
+### AppCenter
+
+* **[Fix]** Fix issue where the SDK source could not be built in a directory that contains escaped characters (applies to all modules).
 
 ### AppCenterAnalytics
 
 * **[Feature]** Preparation work for a future change in transmission protocol and endpoint for Analytics data. There is no impact on your current workflow when using App Center.
+
+___
+
+## Version 1.12.0
+
+### AppCenter
+
+* **[Feature]** Allow users to set userId that applies to crashes, error and push logs. This feature adds an API, but is not yet supported on the App Center backend.
+* **[Fix]** Do not delete old logs when trying to add a log larger than the maximum storage capacity.
+* **[Fix]** Fix minimum storage size verification to match minimum possible value.
+* **[Fix]** Fix reporting carrier information using new iOS 12 APIs when running on iOS 12+.
+* **[Fix]** Fix a memory leak issue during executing SQL queries.
+* **[Fix]** Fix a keychain permission issue on macOS applications.
+* **[Feature]** Add preview support for arm64e CPU architecture.
+
+### AppCenterAnalytics
+
+* **[Feature]** Add preview support for arm64e CPU architecture.
+
+### AppCenterCrashes
+
+* **[Feature]** Add preview support for arm64e CPU architecture by using PLCrashReporter 1.2.3-rc1. PLCrashReporter 1.2.3-rc1 is a fork of the official repository and can be found at [https://github.com/Microsoft/PLCrashReporter](https://github.com/Microsoft/PLCrashReporter). It is maintained by the [App Center](https://appcenter.ms) team and based on PLCrashReporter 1.2.1 (commit [fda23306](https://github.com/Microsoft/PLCrashReporter/tree/fda233062b5586f5d01cc527af643168665226c0)) with additional fixes and changes.
+
+### AppCenterDistribute
+
+* **[Feature]** Add preview support for arm64e CPU architecture.
+
+### AppCenterPush
+
+* **[Feature]** Add preview support for arm64e CPU architecture.
+
+___
+
+## Version 1.11.0
+
+### AppCenter
+
+* **[Fix]** Fix an issue where concurrent modification of custom properties was not thread safe.
+* **[Fix]** Fix validating and discarding Not a Number (NaN) and infinite double values for custom properties.
+* **[Fix]** Use standard SQL syntax to avoid affecting users with custom SQLite libraries.
+* **[Fix]** Get database page size dynamically to support custom values.
+
+### AppCenterAnalytics
+
+* **[Feature]** Add new trackEvent APIs that take priority (normal or critical) of event logs. Events tracked with critical flag will take precedence over all other logs except crash logs (when AppCenterCrashes is enabled), and only be dropped if storage is full and must make room for newer critical events or crashes logs.
+
+### AppCenterCrashes
+
+* **[Fix]** Do not force crash macOS application on uncaught exception. If you need this behavior you can set the special flag yourself:
+
+    ```objc
+    [[NSUserDefaults standardUserDefaults] registerDefaults:@{ @"NSApplicationCrashOnExceptions" : @YES }];
+    ```
+
+### AppCenterPush
+
+* **[Fix]** Fix `push:didReceivePushNotification:` callback not triggered on notification tapped or received in foreground when a `UNUserNotificationCenterDelegate` is set.  If you have implemented this delegate please remove any call to the `MSPush#didReceiveRemoteNotification:` method as it's now handled by the new [User Notification Center Delegate Forwarder](https://docs.microsoft.com/appcenter/sdk/push/ios).
+
+___
+
+## Version 1.10.1
+
+This version contains a bug fix for macOS.
+
+### AppCenterCrashes
+
+* **[Fix]** Fix a regression that was introduced in 1.10.0 on macOS. It caused crash reports to contain an incomplete list of loaded binary images.
+
+___
+
+## Version 1.10.0
+
+### AppCenter
+
+* **[Fix]** Add missing network request error logging.
+* **[Feature]** Add a `setMaxStorageSize` API which allows setting a maximum size limit on the local SQLite storage.
+
+### AppCenterAnalytics
+
+* **[Feature]** Add `pause`/`resume` APIs which pause/resume sending Analytics logs to App Center.
+* **[Feature]** Adding support for typed properties. Note that these APIs still convert properties back to strings on the App Center backend. More work is needed to store and display typed properties in the App Center portal. Using the new APIs now will enable future scenarios, but for now the behavior will be the same as it is for current event properties.
+* **[Feature]** Preparation work for a future change in transmission protocol and endpoint for Analytics data. There is no impact on your current workflow when using App Center.
 * **[Fix]** Fix an bug where nested custom properties for an event would not pass validation.
+
+### AppCenterCrashes
+
+* **[Fix]** Fix the list of binary images in crash reports for arm64e-based devices.
+
+### AppCenterDistribute
+
+* **[Fix]** Fix translation of closing a dialog in Portuguese.
 
 ___
 
@@ -19,11 +117,11 @@ This version contains bug fixes and a feature.
 
 ### AppCenter
 
-* **[Fix]** Fixes a potential deadlock that can cause the application to take a long time to launch. This could cause the iOS watchdog to kill the application.
+* **[Fix]** Fix a potential deadlock that can freeze the application launch causing the iOS watchdog to kill the application.
 
 ### AppCenterCrashes
 
-* **[Fix]** Fixes a potential deadlock that can cause the application to take a long time to launch. This could cause the iOS watchdog to kill the application.
+* **[Fix]** The above deadlock was mostly impacting the Crashes module.
 
 ### AppCenterAnalytics
 

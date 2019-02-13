@@ -16,7 +16,7 @@
   if (self.devModel) {
     dict[kMSDevModel] = self.devModel;
   }
-  return dict;
+  return dict.count == 0 ? nil : dict;
 }
 
 #pragma mark - MSModel
@@ -34,12 +34,9 @@
     return NO;
   }
   MSProtocolExtension *protocolExt = (MSProtocolExtension *)object;
-  return ((!self.ticketKeys && !protocolExt.ticketKeys) ||
-          [self.ticketKeys isEqualToArray:protocolExt.ticketKeys]) &&
-         ((!self.devMake && !protocolExt.devMake) ||
-          [self.devMake isEqualToString:protocolExt.devMake]) &&
-         ((!self.devModel && !protocolExt.devModel) ||
-          [self.devModel isEqualToString:protocolExt.devModel]);
+  return ((!self.ticketKeys && !protocolExt.ticketKeys) || [self.ticketKeys isEqualToArray:protocolExt.ticketKeys]) &&
+         ((!self.devMake && !protocolExt.devMake) || [self.devMake isEqualToString:protocolExt.devMake]) &&
+         ((!self.devModel && !protocolExt.devModel) || [self.devModel isEqualToString:protocolExt.devModel]);
 }
 
 #pragma mark - NSCoding

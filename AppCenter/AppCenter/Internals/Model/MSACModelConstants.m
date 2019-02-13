@@ -30,8 +30,18 @@ NSString *const kMSLiveUpdatePackageHash = @"liveUpdatePackageHash";
 
 #pragma mark - MSAbstractLog
 
+NSString *const kMSType = @"type";
+NSString *const kMSTimestamp = @"timestamp";
 NSString *const kMSSId = @"sid";
 NSString *const kMSDistributionGroupId = @"distributionGroupId";
-NSString *const kMSTimestamp = @"timestamp";
+NSString *const kMSUserId = @"userId";
 NSString *const kMSDevice = @"device";
-NSString *const kMSType = @"type";
+
+#pragma mark - MSAbstractLog
+
+NSString *const kMSBooleanTypedPropertyType = @"boolean";
+NSString *const kMSDateTimeTypedPropertyType = @"dateTime";
+NSString *const kMSDoubleTypedPropertyType = @"double";
+NSString *const kMSLongTypedPropertyType = @"long";
+NSString *const kMSStringTypedPropertyType = @"string";
+NSString *const kMSTypedPropertyValue = @"value";

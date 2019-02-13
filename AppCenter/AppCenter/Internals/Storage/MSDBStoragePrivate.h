@@ -4,9 +4,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef int (^MSDBStorageQueryBlock)(void *);
 
-// 4 KiB.
-static const long kMSDefaultPageSizeInBytes = 4 * 1024;
-
 // 10 MiB.
 static const long kMSDefaultDatabaseSizeInBytes = 10 * 1024 * 1024;
 
@@ -16,6 +13,23 @@ static const long kMSDefaultDatabaseSizeInBytes = 10 * 1024 * 1024;
  * Database file name.
  */
 @property(nonatomic, readonly, nullable) NSURL *dbFileURL;
+
+/**
+ * Maximum size of the database.
+ */
+@property(nonatomic) long maxSizeInBytes;
+
+/**
+ * Page size for database.
+ */
+@property(nonatomic, readonly) long pageSize;
+
+/**
+ * Called after the database is created. Override to customize the database.
+ *
+ * @param db Database handle.
+ */
+- (void)customizeDatabase:(void *)db;
 
 /**
  * Called when migration is needed. Override to customize.
@@ -75,8 +89,16 @@ static const long kMSDefaultDatabaseSizeInBytes = 10 * 1024 * 1024;
  *
  * @return The selected entries.
  */
-+ (NSArray<NSArray *> *)executeSelectionQuery:(NSString *)query
-                             inOpenedDatabase:(void *)db;
++ (NSArray<NSArray *> *)executeSelectionQuery:(NSString *)query inOpenedDatabase:(void *)db;
+
+/**
+ * Query the maximum number of pages (i.e.: SQLite "max_page_count") of the database.
+ *
+ * @param db Database handle.
+ *
+ * @return The maximum number of pages.
+ */
++ (long)getMaxPageCountInOpenedDatabase:(void *)db;
 
 @end
 

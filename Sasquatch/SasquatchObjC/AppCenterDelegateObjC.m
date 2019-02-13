@@ -1,5 +1,4 @@
 #import "AppCenterDelegateObjC.h"
-#import "MSEventFilter.h"
 
 #if GCC_PREPROCESSOR_MACRO_PUPPET
 #import "AppCenter.h"
@@ -31,7 +30,7 @@
 }
 
 - (void)setAppCenterEnabled:(BOOL)isEnabled {
-  return [MSAppCenter setEnabled:isEnabled];
+  [MSAppCenter setEnabled:isEnabled];
 }
 
 - (NSString *)installId {
@@ -67,7 +66,11 @@
 }
 
 - (void)startAnalyticsFromLibrary {
-  [MSAppCenter startFromLibraryWithServices:@[ [MSAnalytics class] ]];
+  [MSAppCenter startFromLibraryWithServices:@ [[MSAnalytics class]]];
+}
+
+- (void)setUserId:(NSString *)userId {
+  [MSAppCenter setUserId:userId];
 }
 
 #pragma mark - Modules section.
@@ -108,9 +111,20 @@
   [MSAnalytics trackEvent:eventName];
 }
 
-- (void)trackEvent:(NSString *)eventName
-    withProperties:(NSDictionary<NSString *, NSString *> *)properties {
+- (void)trackEvent:(NSString *)eventName withProperties:(NSDictionary<NSString *, NSString *> *)properties {
   [MSAnalytics trackEvent:eventName withProperties:properties];
+}
+
+- (void)trackEvent:(NSString *)eventName withProperties:(NSDictionary<NSString *, NSString *> *)properties flags:(MSFlags)flags {
+  [MSAnalytics trackEvent:eventName withProperties:properties flags:flags];
+}
+
+- (void)trackEvent:(NSString *)eventName withTypedProperties:(MSEventProperties *)properties {
+  [MSAnalytics trackEvent:eventName withTypedProperties:properties];
+}
+
+- (void)trackEvent:(NSString *)eventName withTypedProperties:(MSEventProperties *)properties flags:(MSFlags)flags {
+  [MSAnalytics trackEvent:eventName withTypedProperties:properties flags:flags];
 }
 
 - (void)trackPage:(NSString *)pageName {
@@ -119,11 +133,18 @@
 #endif
 }
 
-- (void)trackPage:(NSString *)pageName
-    withProperties:(NSDictionary<NSString *, NSString *> *)properties {
+- (void)trackPage:(NSString *)pageName withProperties:(NSDictionary<NSString *, NSString *> *)properties {
 #if GCC_PREPROCESSOR_MACRO_PUPPET
   [MSAnalytics trackPage:pageName withProperties:properties];
 #endif
+}
+
+- (void)resume {
+  [MSAnalytics resume];
+}
+
+- (void)pause {
+  [MSAnalytics pause];
 }
 
 #pragma mark - MSCrashes section.
@@ -144,12 +165,9 @@
   releaseDetails.version = @"10";
   releaseDetails.shortVersion = @"1.0";
   if ([MSDistribute respondsToSelector:@selector(sharedInstance)]) {
-    id distributeInstance =
-        [MSDistribute performSelector:@selector(sharedInstance)];
-    if ([distributeInstance
-            respondsToSelector:@selector(showConfirmationAlert:)]) {
-      [distributeInstance performSelector:@selector(showConfirmationAlert:)
-                               withObject:releaseDetails];
+    id distributeInstance = [MSDistribute performSelector:@selector(sharedInstance)];
+    if ([distributeInstance respondsToSelector:@selector(showConfirmationAlert:)]) {
+      [distributeInstance performSelector:@selector(showConfirmationAlert:) withObject:releaseDetails];
     }
   }
 }
@@ -157,12 +175,9 @@
 
 - (void)showDistributeDisabledAlert {
   if ([MSDistribute respondsToSelector:@selector(sharedInstance)]) {
-    id distributeInstance =
-        [MSDistribute performSelector:@selector(sharedInstance)];
-    if ([distributeInstance
-            respondsToSelector:@selector(showDistributeDisabledAlert)]) {
-      [distributeInstance
-          performSelector:@selector(showDistributeDisabledAlert)];
+    id distributeInstance = [MSDistribute performSelector:@selector(sharedInstance)];
+    if ([distributeInstance respondsToSelector:@selector(showDistributeDisabledAlert)]) {
+      [distributeInstance performSelector:@selector(showDistributeDisabledAlert)];
     }
   }
 }
@@ -172,10 +187,8 @@
   releaseDetails.version = @"10";
   releaseDetails.shortVersion = @"1.0";
   if ([MSDistribute respondsToSelector:@selector(sharedInstance)]) {
-    id distributeInstance =
-        [MSDistribute performSelector:@selector(sharedInstance)];
-    [[distributeInstance delegate] distribute:distributeInstance
-                  releaseAvailableWithDetails:releaseDetails];
+    id distributeInstance = [MSDistribute performSelector:@selector(sharedInstance)];
+    [[distributeInstance delegate] distribute:distributeInstance releaseAvailableWithDetails:releaseDetails];
   }
 }
 
@@ -266,19 +279,6 @@
 
 - (NSString *)lastCrashReportDeviceCarrierCountry {
   return [[[MSCrashes lastSessionCrashReport] device] carrierCountry];
-}
-
-// MSEventFilter section.
-- (BOOL)isEventFilterEnabled {
-  return [MSEventFilter isEnabled];
-}
-
-- (void)setEventFilterEnabled:(BOOL)isEnabled {
-  [MSEventFilter setEnabled:isEnabled];
-}
-
-- (void)startEventFilterService {
-  [MSAppCenter startService:[MSEventFilter class]];
 }
 
 @end

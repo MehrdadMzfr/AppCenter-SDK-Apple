@@ -16,8 +16,13 @@ NSString *const kMSCSExt = @"ext";
 // Values
 NSString *const kMSCSVerValue = @"3.0";
 
+#pragma mark - MSMetadataExtension
+
+NSString *const kMSFieldDelimiter = @"f";
+
 #pragma mark - MSUserExtension
 
+NSString *const kMSUserLocalId = @"localId";
 NSString *const kMSUserLocale = @"locale";
 
 #pragma mark - MSDeviceExtension
@@ -35,6 +40,7 @@ NSString *const kMSAppId = @"id";
 NSString *const kMSAppVer = @"ver";
 NSString *const kMSAppName = @"name";
 NSString *const kMSAppLocale = @"locale";
+NSString *const kMSAppUserId = @"userId";
 
 #pragma mark - MSProtocolExtension
 
@@ -60,10 +66,11 @@ NSString *const kMSTimezone = @"tz";
 #pragma mark - MSCSData
 
 NSString *const kMSDataBaseData = @"baseData";
-NSString *const kMSDataBaseDataType = @"baseDataType";
+NSString *const kMSDataBaseType = @"baseType";
 
 #pragma mark - MSCSExtensions
 
+NSString *const kMSCSMetadataExt = @"metadata";
 NSString *const kMSCSProtocolExt = @"protocol";
 NSString *const kMSCSUserExt = @"user";
 NSString *const kMSCSDeviceExt = @"device";

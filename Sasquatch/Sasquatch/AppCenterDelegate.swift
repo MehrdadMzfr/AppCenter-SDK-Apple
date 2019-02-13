@@ -1,5 +1,6 @@
 #if !ACTIVE_COMPILATION_CONDITION_PUPPET
 import AppCenter
+import AppCenterAnalytics
 #endif
 
 /**
@@ -19,7 +20,8 @@ import AppCenter
   func sdkVersion() -> String
   func isDebuggerAttached() -> Bool
   func startAnalyticsFromLibrary()
-  
+  func setUserId(_ userId: String?)
+
   // Modules section.
   func isAnalyticsEnabled() -> Bool
   func isCrashesEnabled() -> Bool
@@ -33,8 +35,13 @@ import AppCenter
   // MSAnalytics section.
   func trackEvent(_ eventName: String)
   func trackEvent(_ eventName: String, withProperties: Dictionary<String, String>)
+  func trackEvent(_ eventName: String, withProperties: Dictionary<String, String>, flags: MSFlags)
+  func trackEvent(_ eventName: String, withTypedProperties: MSEventProperties)
+  func trackEvent(_ eventName: String, withTypedProperties: MSEventProperties?, flags: MSFlags)
   func trackPage(_ pageName: String)
   func trackPage(_ pageName: String, withProperties: Dictionary<String, String>)
+  func resume()
+  func pause()
   
   // MSCrashes section.
   func hasCrashedInLastSession() -> Bool
@@ -68,9 +75,4 @@ import AppCenter
   func lastCrashReportDeviceCarrierName() -> String?
   func lastCrashReportDeviceCarrierCountry() -> String?
   func lastCrashReportDeviceAppNamespace() -> String?
-
-  // MSEventFilter section.
-  func isEventFilterEnabled() -> Bool
-  func setEventFilterEnabled(_ isEnabled: Bool)
-  func startEventFilterService()
 }

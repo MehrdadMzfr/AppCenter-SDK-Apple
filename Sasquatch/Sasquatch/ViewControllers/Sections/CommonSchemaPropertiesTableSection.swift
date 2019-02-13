@@ -1,12 +1,12 @@
 import UIKit
 
-class CommonSchemaPropertiesTableSection : PropertiesTableSection {
+class CommonSchemaPropertiesTableSection : SimplePropertiesTableSection {
 
   let kTargetSelectorCellRow = 0
   let kDeviceIdRow = 1
   let kNumberOfHeaderCells = 2
   let switchCellIdentifier = "collectdeviceidswitchcell"
-  let propertyKeys = ["App Name", "App Version", "App Locale"]
+  let propertyKeys = ["App Name", "App Version", "App Locale", "User Id"]
   var propertyValues: [String: [String]]!
   var transmissionTargetSelectorCell: MSAnalyticsTransmissionTargetSelectorViewCell?
   var collectDeviceIdStates: [String: Bool]!
@@ -15,6 +15,16 @@ class CommonSchemaPropertiesTableSection : PropertiesTableSection {
     case AppName = 0
     case AppVersion
     case AppLocale
+    case UserId
+  }
+
+  override var numberOfCustomHeaderCells: Int {
+    get { return kNumberOfHeaderCells }
+  }
+
+  // Since properties are static, there is no "insert" row.
+  override var hasInsertRow: Bool {
+    get { return false }
   }
 
   override init(tableSection: Int, tableView: UITableView) {
@@ -36,13 +46,13 @@ class CommonSchemaPropertiesTableSection : PropertiesTableSection {
     case kTargetSelectorCellRow:
       return transmissionTargetSelectorCell!
     case kDeviceIdRow:
-        let cell = tableView.dequeueReusableCell(withIdentifier: switchCellIdentifier)!
-        let switcher: UISwitch? = cell.getSubview()
-        let selectedTarget = transmissionTargetSelectorCell?.selectedTransmissionTarget()!
-        switcher!.isOn = collectDeviceIdStates[selectedTarget!]!
-        switcher!.isEnabled = !switcher!.isOn
-        switcher!.addTarget(self, action: #selector(collectDeviceIdSwitchCellEnabled(sender:)), for: .valueChanged)
-        return cell
+      let cell = tableView.dequeueReusableCell(withIdentifier: switchCellIdentifier)!
+      let switcher: UISwitch? = cell.getSubview()
+      let selectedTarget = transmissionTargetSelectorCell?.selectedTransmissionTarget()!
+      switcher!.isOn = collectDeviceIdStates[selectedTarget!]!
+      switcher!.isEnabled = !switcher!.isOn
+      switcher!.addTarget(self, action: #selector(collectDeviceIdSwitchCellEnabled(sender:)), for: .valueChanged)
+      return cell
     default:
       let cell = super.tableView(tableView, cellForRowAt: indexPath) as! MSAnalyticsPropertyTableViewCell
       cell.valueField.placeholder = "Override value"
@@ -52,42 +62,34 @@ class CommonSchemaPropertiesTableSection : PropertiesTableSection {
   
   override func propertyValueChanged(sender: UITextField!) {
     let selectedTarget = transmissionTargetSelectorCell?.selectedTransmissionTarget()
-    let propertyIndex = getCellRow(forTextField: sender) - propertyCellOffset()
+    let propertyIndex = getCellRow(forTextField: sender) - self.propertyCellOffset
     let target = MSTransmissionTargets.shared.transmissionTargets[selectedTarget!]!
     propertyValues[selectedTarget!]![propertyIndex] = sender.text!
-    switch propertyIndex {
-    case CommonSchemaPropertyRow.AppName.rawValue:
+    switch CommonSchemaPropertyRow(rawValue: propertyIndex)! {
+    case .AppName:
       target.propertyConfigurator.setAppName(sender.text!)
       break
-    case CommonSchemaPropertyRow.AppVersion.rawValue:
+    case .AppVersion:
       target.propertyConfigurator.setAppVersion(sender.text!)
       break
-    case CommonSchemaPropertyRow.AppLocale.rawValue:
+    case .AppLocale:
       target.propertyConfigurator.setAppLocale(sender.text!)
       break
-    default:
+    case .UserId:
+      target.propertyConfigurator.setUserId(sender.text!)
       break
     }
   }
 
   override func propertyAtRow(row: Int) -> (String, String) {
     let selectedTarget = transmissionTargetSelectorCell?.selectedTransmissionTarget()
-    let propertyIndex = row - propertyCellOffset()
+    let propertyIndex = row - self.propertyCellOffset
     let value = propertyValues[selectedTarget!]![propertyIndex]
-    return (propertyKeys[row - numberOfCustomHeaderCells()], value)
-  }
-
-  override func numberOfCustomHeaderCells() -> Int {
-    return kNumberOfHeaderCells;
+    return (propertyKeys[row - numberOfCustomHeaderCells], value)
   }
 
   override func getPropertyCount() -> Int {
     return propertyKeys.count
-  }
-
-  // Since properties are static, there is no "insert" row.
-  override func hasInsertRow() -> Bool {
-    return false
   }
 
   func collectDeviceIdSwitchCellEnabled(sender: UISwitch?) {

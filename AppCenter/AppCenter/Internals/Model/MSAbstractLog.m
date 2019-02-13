@@ -4,6 +4,7 @@
 #import "MSAppExtension.h"
 #import "MSCSExtensions.h"
 #import "MSCSModelConstants.h"
+#import "MSConstants+Internal.h"
 #import "MSDevice.h"
 #import "MSDeviceExtension.h"
 #import "MSDeviceInternal.h"
@@ -13,8 +14,14 @@
 #import "MSProtocolExtension.h"
 #import "MSSDKExtension.h"
 #import "MSUserExtension.h"
+#import "MSUserIdContext.h"
 #import "MSUtility+Date.h"
 #import "MSUtility+StringFormatting.h"
+
+/**
+ * App namespace prefix for common schema.
+ */
+static NSString *const kMSAppNamespacePrefix = @"I";
 
 @implementation MSAbstractLog
 
@@ -22,7 +29,9 @@
 @synthesize timestamp = _timestamp;
 @synthesize sid = _sid;
 @synthesize distributionGroupId = _distributionGroupId;
+@synthesize userId = _userId;
 @synthesize device = _device;
+@synthesize tag = _tag;
 
 - (instancetype)init {
   self = [super init];
@@ -46,6 +55,9 @@
   if (self.distributionGroupId) {
     dict[kMSDistributionGroupId] = self.distributionGroupId;
   }
+  if (self.userId) {
+    dict[kMSUserId] = self.userId;
+  }
   if (self.device) {
     dict[kMSDevice] = [self.device serializeToDictionary];
   }
@@ -61,12 +73,11 @@
     return NO;
   }
   MSAbstractLog *log = (MSAbstractLog *)object;
-  return ((!self.type && !log.type) || [self.type isEqualToString:log.type]) &&
-         ((!self.timestamp && !log.timestamp) ||
-          [self.timestamp isEqualToDate:log.timestamp]) &&
+  return ((!self.tag && !log.tag) || [self.tag isEqual:log.tag]) && ((!self.type && !log.type) || [self.type isEqualToString:log.type]) &&
+         ((!self.timestamp && !log.timestamp) || [self.timestamp isEqualToDate:log.timestamp]) &&
          ((!self.sid && !log.sid) || [self.sid isEqualToString:log.sid]) &&
-         ((!self.distributionGroupId && !log.distributionGroupId) ||
-          [self.distributionGroupId isEqualToString:log.distributionGroupId]) &&
+         ((!self.distributionGroupId && !log.distributionGroupId) || [self.distributionGroupId isEqualToString:log.distributionGroupId]) &&
+         ((!self.userId && !log.userId) || [self.userId isEqualToString:log.userId]) &&
          ((!self.device && !log.device) || [self.device isEqual:log.device]);
 }
 
@@ -79,6 +90,7 @@
     _timestamp = [coder decodeObjectForKey:kMSTimestamp];
     _sid = [coder decodeObjectForKey:kMSSId];
     _distributionGroupId = [coder decodeObjectForKey:kMSDistributionGroupId];
+    _userId = [coder decodeObjectForKey:kMSUserId];
     _device = [coder decodeObjectForKey:kMSDevice];
   }
   return self;
@@ -89,6 +101,7 @@
   [coder encodeObject:self.timestamp forKey:kMSTimestamp];
   [coder encodeObject:self.sid forKey:kMSSId];
   [coder encodeObject:self.distributionGroupId forKey:kMSDistributionGroupId];
+  [coder encodeObject:self.userId forKey:kMSUserId];
   [coder encodeObject:self.device forKey:kMSDevice];
 }
 
@@ -96,18 +109,11 @@
 
 - (NSString *)serializeLogWithPrettyPrinting:(BOOL)prettyPrint {
   NSString *jsonString;
-  NSJSONWritingOptions printOptions =
-      prettyPrint ? NSJSONWritingPrettyPrinted : (NSJSONWritingOptions)0;
-  NSData *jsonData =
-      [NSJSONSerialization dataWithJSONObject:[self serializeToDictionary]
-                                      options:printOptions
-                                        error:nil];
-
+  NSJSONWritingOptions printOptions = prettyPrint ? NSJSONWritingPrettyPrinted : (NSJSONWritingOptions)0;
+  NSData *jsonData = [NSJSONSerialization dataWithJSONObject:[self serializeToDictionary] options:printOptions error:nil];
   if (jsonData) {
-    jsonString =
-        [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
-    jsonString = [jsonString stringByReplacingOccurrencesOfString:@"\\/"
-                                                       withString:@"/"];
+    jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+    jsonString = [jsonString stringByReplacingOccurrencesOfString:@"\\/" withString:@"/"];
   }
   return jsonString;
 }
@@ -133,10 +139,10 @@
 
 #pragma mark - MSLogConversion
 
-- (NSArray<MSCommonSchemaLog *> *)toCommonSchemaLogs {
+- (NSArray<MSCommonSchemaLog *> *)toCommonSchemaLogsWithFlags:(MSFlags)flags {
   NSMutableArray<MSCommonSchemaLog *> *csLogs = [NSMutableArray new];
   for (NSString *token in self.transmissionTargetTokens) {
-    MSCommonSchemaLog *csLog = [self toCommonSchemaLogForTargetToken:token];
+    MSCommonSchemaLog *csLog = [self toCommonSchemaLogForTargetToken:token flags:(MSFlags)flags];
     if (csLog) {
       [csLogs addObject:csLog];
     }
@@ -148,7 +154,7 @@
 
 #pragma mark - Helper
 
-- (MSCommonSchemaLog *)toCommonSchemaLogForTargetToken:(NSString *)token {
+- (MSCommonSchemaLog *)toCommonSchemaLogForTargetToken:(NSString *)token flags:(MSFlags)flags {
   MSCommonSchemaLog *csLog = [MSCommonSchemaLog new];
   csLog.transmissionTargetTokens = [NSSet setWithObject:token];
   csLog.ver = kMSCSVerValue;
@@ -158,8 +164,8 @@
 
   // Calculate iKey based on the target token.
   csLog.iKey = [MSUtility iKeyFromTargetToken:token];
+  csLog.flags = flags;
 
-  // TODO flags not supported at this time.
   // TODO cV not supported at this time.
 
   // Setup extensions.
@@ -172,27 +178,23 @@
 
   // User extension.
   csLog.ext.userExt = [MSUserExtension new];
+  csLog.ext.userExt.localId = [MSUserIdContext prefixedUserIdFromUserId:self.userId];
 
-  // FIXME Country code can be wrong if the locale doesn't correspond to the
-  // region in the setting (i.e.:fr_US). Convert user local to use dash (-) as
-  // the separator as described in RFC 4646.  E.g., zh-Hans-CN.
-  csLog.ext.userExt.locale =
-      [self.device.locale stringByReplacingOccurrencesOfString:@"_"
-                                                    withString:@"-"];
+  // FIXME Country code can be wrong if the locale doesn't correspond to the region in the setting (i.e.:fr_US). Convert user local to use
+  // dash (-) as the separator as described in RFC 4646.  E.g., zh-Hans-CN.
+  csLog.ext.userExt.locale = [self.device.locale stringByReplacingOccurrencesOfString:@"_" withString:@"-"];
 
   // OS extension.
   csLog.ext.osExt = [MSOSExtension new];
   csLog.ext.osExt.name = self.device.osName;
-  csLog.ext.osExt.ver = [self combineOsVersion:self.device.osVersion
-                                     withBuild:self.device.osBuild];
+  csLog.ext.osExt.ver = [self combineOsVersion:self.device.osVersion withBuild:self.device.osBuild];
 
   // App extension.
   csLog.ext.appExt = [MSAppExtension new];
   csLog.ext.appExt.appId =
-      [NSString stringWithFormat:@"I:%@", self.device.appNamespace];
+      [NSString stringWithFormat:@"%@%@%@", kMSAppNamespacePrefix, kMSCommonSchemaPrefixSeparator, self.device.appNamespace];
   csLog.ext.appExt.ver = self.device.appVersion;
-  csLog.ext.appExt.locale =
-      [[[NSBundle mainBundle] preferredLocalizations] firstObject];
+  csLog.ext.appExt.locale = [[[NSBundle mainBundle] preferredLocalizations] firstObject];
 
   // Network extension.
   csLog.ext.netExt = [MSNetExtension new];
@@ -200,13 +202,11 @@
 
   // SDK extension.
   csLog.ext.sdkExt = [MSSDKExtension new];
-  csLog.ext.sdkExt.libVer = [self combineSDKLibVer:self.device.sdkName
-                                       withVersion:self.device.sdkVersion];
+  csLog.ext.sdkExt.libVer = [self combineSDKLibVer:self.device.sdkName withVersion:self.device.sdkVersion];
 
   // Loc extension.
   csLog.ext.locExt = [MSLocExtension new];
-  csLog.ext.locExt.tz = [self
-      convertTimeZoneOffsetToISO8601:[self.device.timeZoneOffset integerValue]];
+  csLog.ext.locExt.tz = [self convertTimeZoneOffsetToISO8601:[self.device.timeZoneOffset integerValue]];
 
   // Device extension.
   csLog.ext.deviceExt = [MSDeviceExtension new];
@@ -217,18 +217,15 @@
 - (NSString *)combineOsVersion:(NSString *)version withBuild:(NSString *)build {
   NSString *combinedVersionAndBuild;
   if (version && version.length) {
-    combinedVersionAndBuild =
-        [NSString stringWithFormat:@"Version %@", version];
+    combinedVersionAndBuild = [NSString stringWithFormat:@"Version %@", version];
   }
   if (build && build.length) {
-    combinedVersionAndBuild = [NSString
-        stringWithFormat:@"%@ (Build %@)", combinedVersionAndBuild, build];
+    combinedVersionAndBuild = [NSString stringWithFormat:@"%@ (Build %@)", combinedVersionAndBuild, build];
   }
   return combinedVersionAndBuild;
 }
 
-- (NSString *)combineSDKLibVer:(NSString *)name
-                   withVersion:(NSString *)version {
+- (NSString *)combineSDKLibVer:(NSString *)name withVersion:(NSString *)version {
   NSString *combinedVersion;
   if (name && name.length && version && version.length) {
     combinedVersion = [NSString stringWithFormat:@"%@-%@", name, version];
@@ -241,8 +238,7 @@
   NSInteger remainingMinutes = labs(timeZoneOffset) % 60;
 
   // This will look like this: +hhh:mm.
-  return [NSString stringWithFormat:@"%+03ld:%02ld", (long)offsetInHour,
-                                    (long)remainingMinutes];
+  return [NSString stringWithFormat:@"%+03ld:%02ld", (long)offsetInHour, (long)remainingMinutes];
 }
 
 @end

@@ -13,7 +13,7 @@
   if (self.name) {
     dict[kMSOSName] = self.name;
   }
-  return dict;
+  return dict.count == 0 ? nil : dict;
 }
 
 #pragma mark - MSModel
@@ -32,8 +32,7 @@
   }
   MSOSExtension *osExt = (MSOSExtension *)object;
   return ((!self.ver && !osExt.ver) || [self.ver isEqualToString:osExt.ver]) &&
-         ((!self.name && !osExt.name) ||
-          [self.name isEqualToString:osExt.name]);
+         ((!self.name && !osExt.name) || [self.name isEqualToString:osExt.name]);
 }
 
 #pragma mark - NSCoding

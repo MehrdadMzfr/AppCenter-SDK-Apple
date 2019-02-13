@@ -1,5 +1,4 @@
 #import "MSDeviceExtension.h"
-
 #import "MSCSModelConstants.h"
 
 @implementation MSDeviceExtension
@@ -7,8 +6,9 @@
 #pragma mark - MSSerializableObject
 
 - (NSMutableDictionary *)serializeToDictionary {
-  NSMutableDictionary *dict = [NSMutableDictionary new];
+  NSMutableDictionary *dict;
   if (self.localId) {
+    dict = [NSMutableDictionary new];
     dict[kMSDeviceLocalId] = self.localId;
   }
   return dict;
@@ -29,8 +29,7 @@
     return NO;
   }
   MSDeviceExtension *deviceExt = (MSDeviceExtension *)object;
-  return (!self.localId && !deviceExt.localId) ||
-         [self.localId isEqualToString:deviceExt.localId];
+  return (!self.localId && !deviceExt.localId) || [self.localId isEqualToString:deviceExt.localId];
 }
 
 #pragma mark - NSCoding

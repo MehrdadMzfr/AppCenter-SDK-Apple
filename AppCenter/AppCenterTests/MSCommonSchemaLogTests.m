@@ -4,8 +4,10 @@
 #import "MSCSExtensions.h"
 #import "MSCSModelConstants.h"
 #import "MSCommonSchemaLog.h"
+#import "MSConstants.h"
 #import "MSDevice.h"
 #import "MSLocExtension.h"
+#import "MSLogContainer.h"
 #import "MSModelTestsUtililty.h"
 #import "MSNetExtension.h"
 #import "MSOSExtension.h"
@@ -31,7 +33,8 @@
     kMSCSVer : @"3.0",
     kMSCSName : @"1DS",
     kMSCSTime : abstractDummies[kMSTimestamp],
-    kMSCSIKey : @"60cd0b94-6060-11e8-9c2d-fa7ae01bbebc",
+    kMSCSIKey : @"o:60cd0b94-6060-11e8-9c2d-fa7ae01bbebc",
+    kMSCSFlags : @(MSFlagsPersistenceNormal),
     kMSCSExt : [self extWithDummyValues],
     kMSCSData : [self dataWithDummyValues]
   } mutableCopy];
@@ -47,32 +50,29 @@
 
 - (void)testCSLogJSONSerializingToDictionary {
 
+  // If
+  MSOrderedDictionary *expectedSerializedLog = [MSOrderedDictionary new];
+  [expectedSerializedLog setObject:@"3.0" forKey:kMSCSVer];
+  [expectedSerializedLog setObject:@"1DS" forKey:kMSCSName];
+  [expectedSerializedLog setObject:[MSUtility dateToISO8601:self.csLogDummyValues[kMSCSTime]] forKey:kMSCSTime];
+  [expectedSerializedLog setObject:@"o:60cd0b94-6060-11e8-9c2d-fa7ae01bbebc" forKey:kMSCSIKey];
+  [expectedSerializedLog setObject:@(MSFlagsPersistenceNormal) forKey:kMSCSFlags];
+  [expectedSerializedLog setObject:[self.csLogDummyValues[kMSCSExt] serializeToDictionary] forKey:kMSCSExt];
+  [expectedSerializedLog setObject:[self.csLogDummyValues[kMSCSData] serializeToDictionary] forKey:kMSCSData];
+
   // When
-  NSMutableDictionary *dict = [self.commonSchemaLog serializeToDictionary];
+  NSMutableDictionary *serializedLog = [self.commonSchemaLog serializeToDictionary];
 
   // Then
-  self.csLogDummyValues[kMSCSTime] =
-      [MSUtility dateToISO8601:self.csLogDummyValues[kMSCSTime]];
-  self.csLogDummyValues[kMSCSData] =
-      [self.csLogDummyValues[kMSCSData] serializeToDictionary];
-  self.csLogDummyValues[kMSCSExt] =
-      [self.csLogDummyValues[kMSCSExt] serializeToDictionary];
-  [self.csLogDummyValues removeObjectForKey:kMSDevice];
-  [self.csLogDummyValues removeObjectForKey:kMSDistributionGroupId];
-  [self.csLogDummyValues removeObjectForKey:kMSTimestamp];
-  [self.csLogDummyValues removeObjectForKey:kMSType];
-  [self.csLogDummyValues removeObjectForKey:kMSSId];
-  XCTAssertNotNil(dict);
-  XCTAssertEqualObjects(dict, self.csLogDummyValues);
+  XCTAssertNotNil(serializedLog);
+  XCTAssertTrue([expectedSerializedLog isEqualToDictionary:serializedLog]);
 }
 
 - (void)testCSLogNSCodingSerializationAndDeserialization {
 
   // When
-  NSData *serializedCSLog =
-      [NSKeyedArchiver archivedDataWithRootObject:self.commonSchemaLog];
-  MSCommonSchemaLog *actualCSLog =
-      [NSKeyedUnarchiver unarchiveObjectWithData:serializedCSLog];
+  NSData *serializedCSLog = [NSKeyedArchiver archivedDataWithRootObject:self.commonSchemaLog];
+  MSCommonSchemaLog *actualCSLog = [NSKeyedUnarchiver unarchiveObjectWithData:serializedCSLog];
 
   // Then
   XCTAssertNotNil(actualCSLog);
@@ -80,13 +80,10 @@
   XCTAssertTrue([actualCSLog isMemberOfClass:[MSCommonSchemaLog class]]);
   XCTAssertEqualObjects(actualCSLog.ver, self.csLogDummyValues[kMSCSVer]);
   XCTAssertEqualObjects(actualCSLog.name, self.csLogDummyValues[kMSCSName]);
-  XCTAssertEqualObjects(actualCSLog.timestamp,
-                        self.csLogDummyValues[kMSCSTime]);
-  XCTAssertEqual(actualCSLog.popSample,
-                 [self.csLogDummyValues[kMSCSPopSample] doubleValue]);
+  XCTAssertEqualObjects(actualCSLog.timestamp, self.csLogDummyValues[kMSCSTime]);
+  XCTAssertEqual(actualCSLog.popSample, [self.csLogDummyValues[kMSCSPopSample] doubleValue]);
   XCTAssertEqualObjects(actualCSLog.iKey, self.csLogDummyValues[kMSCSIKey]);
-  XCTAssertEqual(actualCSLog.flags,
-                 [self.csLogDummyValues[kMSCSFlags] longLongValue]);
+  XCTAssertEqual(actualCSLog.flags, [self.csLogDummyValues[kMSCSFlags] longLongValue]);
   XCTAssertEqualObjects(actualCSLog.cV, self.csLogDummyValues[kMSCSCV]);
   XCTAssertEqualObjects(actualCSLog.ext, self.csLogDummyValues[kMSCSExt]);
   XCTAssertEqualObjects(actualCSLog.data, self.csLogDummyValues[kMSCSData]);
@@ -167,9 +164,8 @@
   XCTAssertNotEqualObjects(anotherCommonSchemaLog, self.commonSchemaLog);
 
   // If
-  anotherCommonSchemaLog.popSample =
-      [self.csLogDummyValues[kMSCSPopSample] doubleValue];
-  anotherCommonSchemaLog.iKey = @"0bcff4a2-6377-11e8-adc0-fa7ae01bbebc";
+  anotherCommonSchemaLog.popSample = [self.csLogDummyValues[kMSCSPopSample] doubleValue];
+  anotherCommonSchemaLog.iKey = @"o:0bcff4a2-6377-11e8-adc0-fa7ae01bbebc";
 
   // Then
   XCTAssertNotEqualObjects(anotherCommonSchemaLog, self.commonSchemaLog);
@@ -182,8 +178,7 @@
   XCTAssertNotEqualObjects(anotherCommonSchemaLog, self.commonSchemaLog);
 
   // If
-  anotherCommonSchemaLog.flags =
-      [self.csLogDummyValues[kMSCSFlags] longLongValue];
+  anotherCommonSchemaLog.flags = [self.csLogDummyValues[kMSCSFlags] longLongValue];
   anotherCommonSchemaLog.cV = @"HyCFaiQoBkyEp0L3.1.3";
 
   // Then
@@ -205,9 +200,28 @@
 
   // If
   anotherCommonSchemaLog.data = self.csLogDummyValues[kMSCSData];
+  anotherCommonSchemaLog.flags = -1;
+
+  // Then
+  XCTAssertNotEqualObjects(anotherCommonSchemaLog, self.commonSchemaLog);
+
+  // If
+  anotherCommonSchemaLog.flags = [self.csLogDummyValues[kMSCSFlags] longLongValue];
 
   // Then
   XCTAssertEqualObjects(anotherCommonSchemaLog, self.commonSchemaLog);
+}
+
+- (void)testOrderedDictionaryPerformance {
+  NSMutableArray *logs = [NSMutableArray new];
+  for (int i = 0; i < 10000; i++) {
+    [logs addObject:self.commonSchemaLog];
+  }
+  MSLogContainer *logContainer = [MSLogContainer new];
+  [logContainer setLogs:logs];
+  [self measureBlock:^{
+    [logContainer serializeLog];
+  }];
 }
 
 #pragma mark - Helper
@@ -226,6 +240,7 @@
 
 - (MSUserExtension *)userExtWithDummyValues {
   MSUserExtension *userExt = [MSUserExtension new];
+  userExt.localId = @"c:alice";
   userExt.locale = @"en-us";
   return userExt;
 }
@@ -248,6 +263,7 @@
   appExt.appId = @"com.mamamia.bundle.id";
   appExt.ver = @"1.0.0";
   appExt.locale = @"fr-ca";
+  appExt.userId = @"c:alice";
   return appExt;
 }
 
@@ -275,16 +291,22 @@
 
 - (MSCSData *)dataWithDummyValues {
   MSCSData *data = [MSCSData new];
-  data.properties = @{ @"Jan" : @"1", @"feb" : @"2", @"Mar" : @"3" };
+  data.properties = [[MSModelTestsUtililty unorderedDataDummies] copy];
   return data;
 }
 
 - (MSCommonSchemaLog *)csLogWithDummyValues:(NSDictionary *)dummyValues {
   MSCommonSchemaLog *csLog = [MSCommonSchemaLog new];
-  csLog.ver = dummyValues[kMSCSVer];
+
+  /*
+   * These are deliberately out of order to verify that they are reordered properly when serialized.
+   * Correct order is ver, name, timestamp, (popSample), iKey, flags.
+   */
   csLog.name = dummyValues[kMSCSName];
   csLog.timestamp = dummyValues[kMSCSTime];
+  csLog.ver = dummyValues[kMSCSVer];
   csLog.iKey = dummyValues[kMSCSIKey];
+  csLog.flags = [dummyValues[kMSCSFlags] longLongValue];
   csLog.ext = dummyValues[kMSCSExt];
   csLog.data = dummyValues[kMSCSData];
   [MSModelTestsUtililty populateAbstractLogWithDummies:csLog];

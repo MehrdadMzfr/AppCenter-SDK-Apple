@@ -3,6 +3,7 @@
 #import "MSCSModelConstants.h"
 #import "MSDeviceExtension.h"
 #import "MSLocExtension.h"
+#import "MSMetadataExtension.h"
 #import "MSNetExtension.h"
 #import "MSOSExtension.h"
 #import "MSProtocolExtension.h"
@@ -15,6 +16,9 @@
 
 - (NSMutableDictionary *)serializeToDictionary {
   NSMutableDictionary *dict = [NSMutableDictionary new];
+  if (self.metadataExt) {
+    dict[kMSCSMetadataExt] = [self.metadataExt serializeToDictionary];
+  }
   if (self.protocolExt) {
     dict[kMSCSProtocolExt] = [self.protocolExt serializeToDictionary];
   }
@@ -45,14 +49,10 @@
 #pragma mark - MSModel
 
 - (BOOL)isValid {
-  return (!self.protocolExt || [self.protocolExt isValid]) &&
-         (!self.userExt || [self.userExt isValid]) &&
-         (!self.deviceExt || [self.deviceExt isValid]) &&
-         (!self.osExt || [self.osExt isValid]) &&
-         (!self.appExt || [self.appExt isValid]) &&
-         (!self.netExt || [self.netExt isValid]) &&
-         (!self.sdkExt || [self.sdkExt isValid]) &&
-         (!self.locExt || [self.locExt isValid]);
+  return (!self.metadataExt || [self.metadataExt isValid]) && (!self.protocolExt || [self.protocolExt isValid]) &&
+         (!self.userExt || [self.userExt isValid]) && (!self.deviceExt || [self.deviceExt isValid]) &&
+         (!self.osExt || [self.osExt isValid]) && (!self.appExt || [self.appExt isValid]) && (!self.netExt || [self.netExt isValid]) &&
+         (!self.sdkExt || [self.sdkExt isValid]) && (!self.locExt || [self.locExt isValid]);
 }
 
 #pragma mark - NSObject
@@ -62,27 +62,22 @@
     return NO;
   }
   MSCSExtensions *csExt = (MSCSExtensions *)object;
-  return ((!self.protocolExt && !csExt.protocolExt) ||
-          [self.protocolExt isEqual:csExt.protocolExt]) &&
-         ((!self.userExt && !csExt.userExt) ||
-          [self.userExt isEqual:csExt.userExt]) &&
-         ((!self.deviceExt && !csExt.deviceExt) ||
-          [self.deviceExt isEqual:csExt.deviceExt]) &&
+  return ((!self.protocolExt && !csExt.protocolExt) || [self.protocolExt isEqual:csExt.protocolExt]) &&
+         ((!self.metadataExt && !csExt.metadataExt) || [self.metadataExt isEqual:csExt.metadataExt]) &&
+         ((!self.userExt && !csExt.userExt) || [self.userExt isEqual:csExt.userExt]) &&
+         ((!self.deviceExt && !csExt.deviceExt) || [self.deviceExt isEqual:csExt.deviceExt]) &&
          ((!self.osExt && !csExt.osExt) || [self.osExt isEqual:csExt.osExt]) &&
-         ((!self.appExt && !csExt.appExt) ||
-          [self.appExt isEqual:csExt.appExt]) &&
-         ((!self.netExt && !csExt.netExt) ||
-          [self.netExt isEqual:csExt.netExt]) &&
-         ((!self.sdkExt && !csExt.sdkExt) ||
-          [self.sdkExt isEqual:csExt.sdkExt]) &&
-         ((!self.locExt && !csExt.locExt) ||
-          [self.locExt isEqual:csExt.locExt]);
+         ((!self.appExt && !csExt.appExt) || [self.appExt isEqual:csExt.appExt]) &&
+         ((!self.netExt && !csExt.netExt) || [self.netExt isEqual:csExt.netExt]) &&
+         ((!self.sdkExt && !csExt.sdkExt) || [self.sdkExt isEqual:csExt.sdkExt]) &&
+         ((!self.locExt && !csExt.locExt) || [self.locExt isEqual:csExt.locExt]);
 }
 
 #pragma mark - NSCoding
 
 - (instancetype)initWithCoder:(NSCoder *)coder {
   if ((self = [super init])) {
+    _metadataExt = [coder decodeObjectForKey:kMSCSMetadataExt];
     _protocolExt = [coder decodeObjectForKey:kMSCSProtocolExt];
     _userExt = [coder decodeObjectForKey:kMSCSUserExt];
     _deviceExt = [coder decodeObjectForKey:kMSCSDeviceExt];
@@ -96,8 +91,7 @@
 }
 
 - (void)encodeWithCoder:(NSCoder *)coder {
-
-  // Fields must be encoded in the following order.
+  [coder encodeObject:self.metadataExt forKey:kMSCSMetadataExt];
   [coder encodeObject:self.protocolExt forKey:kMSCSProtocolExt];
   [coder encodeObject:self.userExt forKey:kMSCSUserExt];
   [coder encodeObject:self.deviceExt forKey:kMSCSDeviceExt];

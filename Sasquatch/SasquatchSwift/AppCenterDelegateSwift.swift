@@ -60,6 +60,10 @@ class AppCenterDelegateSwift: AppCenterDelegate {
     MSAppCenter.startFromLibrary(withServices: [MSAnalytics.self])
   }
 
+  func setUserId(_ userId: String?) {
+    MSAppCenter.setUserId(userId);
+  }
+
   // Modules section.
   func isAnalyticsEnabled() -> Bool {
     return MSAnalytics.isEnabled()
@@ -102,6 +106,18 @@ class AppCenterDelegateSwift: AppCenterDelegate {
     MSAnalytics.trackEvent(eventName, withProperties: properties)
   }
 
+  func trackEvent(_ eventName: String, withProperties properties: Dictionary<String, String>, flags: MSFlags) {
+    MSAnalytics.trackEvent(eventName, withProperties: properties, flags:flags)
+  }
+
+  func trackEvent(_ eventName: String, withTypedProperties properties: MSEventProperties) {
+    MSAnalytics.trackEvent(eventName, withProperties: properties)
+  }
+
+  func trackEvent(_ eventName: String, withTypedProperties properties: MSEventProperties?, flags: MSFlags) {
+    MSAnalytics.trackEvent(eventName, withProperties: properties, flags: flags)
+  }
+
   func trackPage(_ pageName: String) {
     // TODO: Uncomment when trackPage is moved from internal to public
     // MSAnalytics.trackPage(pageName)
@@ -110,6 +126,14 @@ class AppCenterDelegateSwift: AppCenterDelegate {
   func trackPage(_ pageName: String, withProperties properties: Dictionary<String, String>) {
     // TODO: Uncomment when trackPage is moved from internal to public
     // MSAnalytics.trackPage(pageName, withProperties: properties)
+  }
+
+  func resume() {
+    MSAnalytics.resume()
+  }
+
+  func pause() {
+    MSAnalytics.pause()
   }
 
   // MSCrashes section.
@@ -247,18 +271,5 @@ class AppCenterDelegateSwift: AppCenterDelegate {
 
   func lastCrashReportDeviceAppNamespace() -> String? {
     return MSCrashes.lastSessionCrashReport()?.device.appNamespace
-  }
-
-  // MSEventFilter section.
-  func isEventFilterEnabled() -> Bool {
-    return MSEventFilter.isEnabled();
-  }
-
-  func setEventFilterEnabled(_ isEnabled: Bool) {
-    MSEventFilter.setEnabled(isEnabled);
-  }
-
-  func startEventFilterService() {
-    MSAppCenter.startService(MSEventFilter.self)
   }
 }

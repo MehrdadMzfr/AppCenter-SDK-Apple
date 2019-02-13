@@ -7,6 +7,7 @@
 #import "MSDeviceExtension.h"
 #import "MSDeviceInternal.h"
 #import "MSLocExtension.h"
+#import "MSMetadataExtension.h"
 #import "MSNetExtension.h"
 #import "MSOSExtension.h"
 #import "MSProtocolExtension.h"
@@ -46,35 +47,25 @@
 }
 
 + (NSMutableDictionary *)extensionDummies {
+
   // Set up all extensions with dummy values.
-  NSDictionary *userExtDummyValues =
-      [MSModelTestsUtililty userExtensionDummies];
-  MSUserExtension *userExt =
-      [MSModelTestsUtililty userExtensionWithDummyValues:userExtDummyValues];
+  NSDictionary *userExtDummyValues = [MSModelTestsUtililty userExtensionDummies];
+  MSUserExtension *userExt = [MSModelTestsUtililty userExtensionWithDummyValues:userExtDummyValues];
   NSDictionary *locExtDummyValues = [MSModelTestsUtililty locExtensionDummies];
-  MSLocExtension *locExt =
-      [MSModelTestsUtililty locExtensionWithDummyValues:locExtDummyValues];
+  MSLocExtension *locExt = [MSModelTestsUtililty locExtensionWithDummyValues:locExtDummyValues];
   NSDictionary *osExtDummyValues = [MSModelTestsUtililty osExtensionDummies];
-  MSOSExtension *osExt =
-      [MSModelTestsUtililty osExtensionWithDummyValues:osExtDummyValues];
+  MSOSExtension *osExt = [MSModelTestsUtililty osExtensionWithDummyValues:osExtDummyValues];
   NSDictionary *appExtDummyValues = [MSModelTestsUtililty appExtensionDummies];
-  MSAppExtension *appExt =
-      [MSModelTestsUtililty appExtensionWithDummyValues:appExtDummyValues];
-  NSDictionary *protocolExtDummyValues =
-      [MSModelTestsUtililty protocolExtensionDummies];
-  MSProtocolExtension *protocolExt = [MSModelTestsUtililty
-      protocolExtensionWithDummyValues:protocolExtDummyValues];
+  MSAppExtension *appExt = [MSModelTestsUtililty appExtensionWithDummyValues:appExtDummyValues];
+  NSDictionary *protocolExtDummyValues = [MSModelTestsUtililty protocolExtensionDummies];
+  MSProtocolExtension *protocolExt = [MSModelTestsUtililty protocolExtensionWithDummyValues:protocolExtDummyValues];
   NSDictionary *netExtDummyValues = [MSModelTestsUtililty netExtensionDummies];
-  MSNetExtension *netExt =
-      [MSModelTestsUtililty netExtensionWithDummyValues:netExtDummyValues];
+  MSNetExtension *netExt = [MSModelTestsUtililty netExtensionWithDummyValues:netExtDummyValues];
   NSDictionary *sdkExtDummyValues = [MSModelTestsUtililty sdkExtensionDummies];
-  MSSDKExtension *sdkExt =
-      [MSModelTestsUtililty sdkExtensionWithDummyValues:sdkExtDummyValues];
-  NSDictionary *deviceExtDummyValues =
-      [MSModelTestsUtililty deviceExtensionDummies];
-  MSDeviceExtension *deviceExt =
-      [MSModelTestsUtililty deviceExtensionWithDummyValues:deviceExtDummyValues];
-  
+  MSSDKExtension *sdkExt = [MSModelTestsUtililty sdkExtensionWithDummyValues:sdkExtDummyValues];
+  NSDictionary *deviceExtDummyValues = [MSModelTestsUtililty deviceExtensionDummies];
+  MSDeviceExtension *deviceExt = [MSModelTestsUtililty deviceExtensionWithDummyValues:deviceExtDummyValues];
+
   return [@{
     kMSCSUserExt : userExt,
     kMSCSLocExt : locExt,
@@ -87,59 +78,62 @@
   } mutableCopy];
 }
 
++ (NSDictionary *)metadataExtensionDummies {
+  return @{kMSFieldDelimiter : @{@"baseData" : @{kMSFieldDelimiter : @{@"screenSize" : @2}}}};
+}
+
 + (NSDictionary *)userExtensionDummies {
-  return @{ kMSUserLocale : @"en-us" };
+  return @{kMSUserLocalId : @"c:bob", kMSUserLocale : @"en-us"};
 }
 
 + (NSDictionary *)locExtensionDummies {
-  return @{ kMSTimezone : @"-03:00" };
+  return @{kMSTimezone : @"-03:00"};
 }
 
 + (NSDictionary *)osExtensionDummies {
-  return @{ kMSOSName : @"iOS", kMSOSVer : @"9.0" };
+  return @{kMSOSName : @"iOS", kMSOSVer : @"9.0"};
 }
 
 + (NSDictionary *)appExtensionDummies {
-  return @{
-    kMSAppId : @"com.some.bundle.id",
-    kMSAppVer : @"3.4.1",
-    kMSAppLocale : @"en-us"
-  };
+  return @{kMSAppId : @"com.some.bundle.id", kMSAppVer : @"3.4.1", kMSAppLocale : @"en-us", kMSAppUserId : @"c:alice"};
 }
 
 + (NSDictionary *)protocolExtensionDummies {
-  return @{
-    kMSTicketKeys : @[ @"ticketKey1", @"ticketKey2" ],
-    kMSDevMake : @"Apple",
-    kMSDevModel : @"iPhone X"
-  };
+  return @{kMSTicketKeys : @[ @"ticketKey1", @"ticketKey2" ], kMSDevMake : @"Apple", kMSDevModel : @"iPhone X"};
 }
 
 + (NSDictionary *)netExtensionDummies {
-  return @{ kMSNetProvider : @"Verizon" };
+  return @{kMSNetProvider : @"Verizon"};
 }
 
 + (NSMutableDictionary *)sdkExtensionDummies {
-  return [@{
-    kMSSDKLibVer : @"1.2.0",
-    kMSSDKEpoch : MS_UUID_STRING,
-    kMSSDKSeq : @1,
-    kMSSDKInstallId : [NSUUID new]
-  } mutableCopy];
+  return [@{kMSSDKLibVer : @"1.2.0", kMSSDKEpoch : MS_UUID_STRING, kMSSDKSeq : @1, kMSSDKInstallId : [NSUUID new]} mutableCopy];
 }
 
 + (NSMutableDictionary *)deviceExtensionDummies {
-  return [@{
-            kMSDeviceLocalId : @"00000000-0000-0000-0000-000000000000"
-  } mutableCopy];
+  return [@{kMSDeviceLocalId : @"00000000-0000-0000-0000-000000000000"} mutableCopy];
 }
 
-+ (NSDictionary *)dataDummies {
-  return @{
-    @"akey" : @"avalue",
++ (MSOrderedDictionary *)orderedDataDummies {
+  MSOrderedDictionary *data = [MSOrderedDictionary new];
+  [data setObject:@"aBaseType" forKey:@"baseType"];
+  [data setObject:@"someValue" forKey:@"baseData"];
+  [data setObject:@"anothervalue" forKey:@"anested.key"];
+  [data setObject:@"aValue" forKey:@"aKey"];
+  [data setObject:@"yetanothervalue" forKey:@"anotherkey"];
+  return data;
+}
+
++ (NSDictionary *)unorderedDataDummies {
+  NSDictionary *data = @{
+    @"baseType" : @"aBaseType",
+    @"baseData" : @"someValue",
     @"anested.key" : @"anothervalue",
+    @"aKey" : @"aValue",
     @"anotherkey" : @"yetanothervalue"
   };
+
+  return data;
 }
 
 + (MSDevice *)dummyDevice {
@@ -207,6 +201,7 @@
 
 + (MSUserExtension *)userExtensionWithDummyValues:(NSDictionary *)dummyValues {
   MSUserExtension *userExt = [MSUserExtension new];
+  userExt.localId = dummyValues[kMSUserLocalId];
   userExt.locale = dummyValues[kMSUserLocale];
   return userExt;
 }
@@ -229,11 +224,11 @@
   appExt.appId = dummyValues[kMSAppId];
   appExt.ver = dummyValues[kMSAppVer];
   appExt.locale = dummyValues[kMSAppLocale];
+  appExt.userId = dummyValues[kMSAppUserId];
   return appExt;
 }
 
-+ (MSProtocolExtension *)protocolExtensionWithDummyValues:
-    (NSDictionary *)dummyValues {
++ (MSProtocolExtension *)protocolExtensionWithDummyValues:(NSDictionary *)dummyValues {
   MSProtocolExtension *protocolExt = [MSProtocolExtension new];
   protocolExt.ticketKeys = dummyValues[kMSTicketKeys];
   protocolExt.devMake = dummyValues[kMSDevMake];
@@ -262,9 +257,15 @@
   return deviceExt;
 }
 
++ (MSMetadataExtension *)metadataExtensionWithDummyValues:(NSDictionary *)dummyValues {
+  MSMetadataExtension *metadataExt = [MSMetadataExtension new];
+  metadataExt.metadata = dummyValues;
+  return metadataExt;
+}
+
 + (MSCSData *)dataWithDummyValues:(NSDictionary *)dummyValues {
   MSCSData *data = [MSCSData new];
-  data.properties = dummyValues;
+  data.properties = [dummyValues mutableCopy];
   return data;
 }
 

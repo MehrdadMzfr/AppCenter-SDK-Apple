@@ -1,5 +1,5 @@
-#import "MSCustomProperties.h"
 #import "MSAppCenterInternal.h"
+#import "MSCustomProperties.h"
 #import "MSCustomPropertiesPrivate.h"
 
 static NSString *const kKeyPattern = @"^[a-zA-Z][a-zA-Z0-9]*$";
@@ -35,15 +35,19 @@ static const int maxPropertyValueLength = 128;
 }
 
 - (instancetype)setObject:(NSObject *)value forKey:(NSString *)key {
-  if ([self isValidKey:key] && [self isValidValue:value]) {
-    [self.properties setObject:value forKey:key];
+  @synchronized(self.properties) {
+    if ([self isValidKey:key] && [self isValidValue:value]) {
+      [self.properties setObject:value forKey:key];
+    }
   }
   return self;
 }
 
 - (instancetype)clearPropertyForKey:(NSString *)key {
-  if ([self isValidKey:key]) {
-    [self.properties setObject:[NSNull null] forKey:key];
+  @synchronized(self.properties) {
+    if ([self isValidKey:key]) {
+      [self.properties setObject:[NSNull null] forKey:key];
+    }
   }
   return self;
 }
@@ -52,41 +56,25 @@ static const int maxPropertyValueLength = 128;
   static NSRegularExpression *regex = nil;
   if (!regex) {
     NSError *error = nil;
-    regex = [NSRegularExpression
-        regularExpressionWithPattern:kKeyPattern
-                             options:(NSRegularExpressionOptions)0
-                               error:&error];
+    regex = [NSRegularExpression regularExpressionWithPattern:kKeyPattern options:(NSRegularExpressionOptions)0 error:&error];
     if (!regex) {
-      MSLogError([MSAppCenter logTag],
-                 @"Couldn't create regular expression with pattern\"%@\": %@",
-                 kKeyPattern, error.localizedDescription);
+      MSLogError([MSAppCenter logTag], @"Couldn't create regular expression with pattern\"%@\": %@", kKeyPattern,
+                 error.localizedDescription);
       return NO;
     }
   }
-  if (!key || ![regex matchesInString:key
-                              options:(NSMatchingOptions)0
-                                range:NSMakeRange(0, key.length)]
-                   .count) {
-    MSLogError([MSAppCenter logTag],
-               @"Custom property \"%@\" must match \"%@\"", key, kKeyPattern);
+  if (!key || ![regex matchesInString:key options:(NSMatchingOptions)0 range:NSMakeRange(0, key.length)].count) {
+    MSLogError([MSAppCenter logTag], @"Custom property \"%@\" must match \"%@\"", key, kKeyPattern);
     return NO;
   }
   if (key.length > maxPropertyKeyLength) {
-    MSLogError([MSAppCenter logTag],
-               @"Custom property \"%@\" length cannot be longer than \"%d\" "
-               @"characters.",
-               key, maxPropertyKeyLength);
+    MSLogError([MSAppCenter logTag], @"Custom property \"%@\" length cannot be longer than \"%d\" characters.", key, maxPropertyKeyLength);
     return NO;
   }
   if ([self.properties objectForKey:key]) {
-    MSLogWarning([MSAppCenter logTag],
-                 @"Custom property \"%@\" is already set or cleared and will "
-                 @"be overridden.",
-                 key);
+    MSLogWarning([MSAppCenter logTag], @"Custom property \"%@\" is already set or cleared and will be overridden.", key);
   } else if ([self properties].count >= maxPropertiesCount) {
-    MSLogError([MSAppCenter logTag],
-               @"Custom properties cannot contain more than \"%d\" items.",
-               maxPropertiesCount);
+    MSLogError([MSAppCenter logTag], @"Custom properties cannot contain more than \"%d\" items.", maxPropertiesCount);
     return NO;
   }
   return YES;
@@ -97,20 +85,27 @@ static const int maxPropertyValueLength = 128;
     if ([value isKindOfClass:[NSString class]]) {
       NSString *stringValue = (NSString *)value;
       if (stringValue.length > maxPropertyValueLength) {
-        MSLogError([MSAppCenter logTag],
-                   @"Custom property value length cannot be longer than \"%d\" "
-                   @"characters.",
-                   maxPropertyValueLength);
+        MSLogError([MSAppCenter logTag], @"Custom property value length cannot be longer than \"%d\" characters.", maxPropertyValueLength);
+        return NO;
+      }
+    } else if ([value isKindOfClass:[NSNumber class]]) {
+      double number = [(NSNumber *)value doubleValue];
+      if (number == (double)INFINITY || number == -(double)INFINITY || number != number) {
+        MSLogError([MSAppCenter logTag], @"Custom property value cannot be NaN or infinite.");
         return NO;
       }
     }
   } else {
-    MSLogError(
-        [MSAppCenter logTag],
-        @"Custom property value cannot be null, did you mean to call clear?");
+    MSLogError([MSAppCenter logTag], @"Custom property value cannot be null, did you mean to call clear?");
     return NO;
   }
   return YES;
+}
+
+- (NSDictionary<NSString *, NSObject *> *)propertiesImmutableCopy {
+  @synchronized(self.properties) {
+    return [[NSDictionary alloc] initWithDictionary:self.properties];
+  }
 }
 
 @end

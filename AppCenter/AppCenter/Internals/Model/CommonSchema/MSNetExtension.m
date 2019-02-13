@@ -6,8 +6,9 @@
 #pragma mark - MSSerializableObject
 
 - (NSMutableDictionary *)serializeToDictionary {
-  NSMutableDictionary *dict = [NSMutableDictionary new];
+  NSMutableDictionary *dict;
   if (self.provider) {
+    dict = [NSMutableDictionary new];
     dict[kMSNetProvider] = self.provider;
   }
   return dict;
@@ -28,8 +29,7 @@
     return NO;
   }
   MSNetExtension *netExt = (MSNetExtension *)object;
-  return ((!self.provider && !netExt.provider) ||
-          [self.provider isEqualToString:netExt.provider]);
+  return ((!self.provider && !netExt.provider) || [self.provider isEqualToString:netExt.provider]);
 }
 
 #pragma mark - NSCoding

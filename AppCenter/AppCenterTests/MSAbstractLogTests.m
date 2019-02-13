@@ -28,6 +28,7 @@
   self.sut.timestamp = [NSDate dateWithTimeIntervalSince1970:0];
   self.sut.sid = @"FAKE-SESSION-ID";
   self.sut.distributionGroupId = @"FAKE-GROUP-ID";
+  self.sut.userId = @"FAKE-USER-ID";
   self.sut.device = OCMPartialMock([MSDevice new]);
 }
 
@@ -48,6 +49,7 @@
   assertThat(actual[@"timestamp"], equalTo(@"1970-01-01T00:00:00.000Z"));
   assertThat(actual[@"sid"], equalTo(@"FAKE-SESSION-ID"));
   assertThat(actual[@"distributionGroupId"], equalTo(@"FAKE-GROUP-ID"));
+  assertThat(actual[@"userId"], equalTo(@"FAKE-USER-ID"));
   assertThat(actual[@"device"], equalTo(@{}));
 }
 
@@ -65,8 +67,8 @@
   assertThat(actualLog.type, equalTo(self.sut.type));
   assertThat(actualLog.timestamp, equalTo(self.sut.timestamp));
   assertThat(actualLog.sid, equalTo(self.sut.sid));
-  assertThat(actualLog.distributionGroupId,
-             equalTo(self.sut.distributionGroupId));
+  assertThat(actualLog.distributionGroupId, equalTo(self.sut.distributionGroupId));
+  assertThat(actualLog.userId, equalTo(self.sut.userId));
   assertThat(actualLog.device, equalTo(self.sut.device));
 }
 
@@ -110,63 +112,61 @@
 - (void)testIsEqual {
 
   // If
-  NSString *type = @"fake";
-  NSDate *timestamp = [NSDate dateWithTimeIntervalSince1970:0];
-  NSString *sid = @"FAKE-SESSION-ID";
-  NSString *distributionGroupId = @"FAKE-GROUP-ID";
-  MSDevice *device = [MSDevice new];
-  self.sut.type = type;
-  self.sut.timestamp = timestamp;
-  self.sut.sid = sid;
-  self.sut.distributionGroupId = distributionGroupId;
-  self.sut.device = device;
-
-  // When
-  NSData *serializedEvent =
-      [NSKeyedArchiver archivedDataWithRootObject:self.sut];
-  id actual = [NSKeyedUnarchiver unarchiveObjectWithData:serializedEvent];
-  MSAbstractLog *actualLog = actual;
+  self.sut.tag = [NSObject new];
+  MSAbstractLog *log = [MSAbstractLog new];
+  log.type = self.sut.type;
+  log.timestamp = self.sut.timestamp;
+  log.sid = self.sut.sid;
+  log.distributionGroupId = self.sut.distributionGroupId;
+  log.userId = self.sut.userId;
+  log.device = self.sut.device;
+  log.tag = self.sut.tag;
 
   // Then
-  XCTAssertTrue([self.sut isEqual:actualLog]);
+  XCTAssertTrue([self.sut isEqual:log]);
 
   // When
   self.sut.type = @"new-fake";
 
   // Then
-  XCTAssertFalse([self.sut isEqual:actualLog]);
+  XCTAssertFalse([self.sut isEqual:log]);
+
+  // When
+  self.sut.tag = [NSObject new];
+
+  // Then
+  XCTAssertFalse([self.sut isEqual:log]);
 
   // When
   self.sut.type = @"fake";
   self.sut.distributionGroupId = @"FAKE-NEW-GROUP-ID";
+  self.sut.tag = [NSObject new];
 
   // Then
-  XCTAssertFalse([self.sut isEqual:actualLog]);
+  XCTAssertFalse([self.sut isEqual:log]);
+
+  // When
+  self.sut.distributionGroupId = @"FAKE-GROUP-ID";
+  self.sut.userId = @"FAKE-NEW-USER-ID";
+
+  // Then
+  XCTAssertFalse([self.sut isEqual:log]);
 }
 
 - (void)testSerializingToJsonWorks {
 
-  // If
-  self.sut.type = @"fake";
-  self.sut.timestamp = [NSDate dateWithTimeIntervalSince1970:0];
-  self.sut.sid = @"FAKE-SESSION-ID";
-  self.sut.distributionGroupId = @"FAKE-GROUP-ID";
-  self.sut.device = [MSDevice new];
-
   // When
   NSString *actual = [self.sut serializeLogWithPrettyPrinting:false];
   NSData *actualData = [actual dataUsingEncoding:NSUTF8StringEncoding];
-  id actualDict =
-      [NSJSONSerialization JSONObjectWithData:actualData options:0 error:nil];
+  id actualDict = [NSJSONSerialization JSONObjectWithData:actualData options:0 error:nil];
 
   // Then
   assertThat(actualDict, instanceOf([NSDictionary class]));
   assertThat([actualDict objectForKey:@"type"], equalTo(@"fake"));
-  assertThat([actualDict objectForKey:@"timestamp"],
-             equalTo(@"1970-01-01T00:00:00.000Z"));
+  assertThat([actualDict objectForKey:@"timestamp"], equalTo(@"1970-01-01T00:00:00.000Z"));
   assertThat([actualDict objectForKey:@"sid"], equalTo(@"FAKE-SESSION-ID"));
-  assertThat([actualDict objectForKey:@"distributionGroupId"],
-             equalTo(@"FAKE-GROUP-ID"));
+  assertThat([actualDict objectForKey:@"distributionGroupId"], equalTo(@"FAKE-GROUP-ID"));
+  assertThat([actualDict objectForKey:@"userId"], equalTo(@"FAKE-USER-ID"));
   assertThat([actualDict objectForKey:@"device"], equalTo(@{}));
 }
 
@@ -194,7 +194,7 @@
   self.sut.transmissionTargetTokens = nil;
 
   // When
-  NSArray<MSCommonSchemaLog *> *csLogs = [self.sut toCommonSchemaLogs];
+  NSArray<MSCommonSchemaLog *> *csLogs = [self.sut toCommonSchemaLogsWithFlags:MSFlagsDefault];
 
   // Then
   XCTAssertNil(csLogs);
@@ -206,7 +206,7 @@
   self.sut.transmissionTargetTokens = [@[] mutableCopy];
 
   // When
-  NSArray<MSCommonSchemaLog *> *csLogs = [self.sut toCommonSchemaLogs];
+  NSArray<MSCommonSchemaLog *> *csLogs = [self.sut toCommonSchemaLogsWithFlags:MSFlagsDefault];
 
   // Then
   XCTAssertNil(csLogs);
@@ -216,8 +216,7 @@
 
   // If
   NSArray *expectedIKeys = @[ @"o:iKey1", @"o:iKey2" ];
-  NSSet *expectedTokens =
-      [NSSet setWithArray:@[ @"iKey1-dummytoken", @"iKey2-dummytoken" ]];
+  NSSet *expectedTokens = [NSSet setWithArray:@[ @"iKey1-dummytoken", @"iKey2-dummytoken" ]];
   self.sut.transmissionTargetTokens = expectedTokens;
   OCMStub(self.sut.device.oemName).andReturn(@"fakeOem");
   OCMStub(self.sut.device.model).andReturn(@"fakeModel");
@@ -239,12 +238,12 @@
   id bundleMock = OCMClassMock([NSBundle class]);
   NSString *expectedAppLocale = @"fr_DE";
   OCMStub([bundleMock mainBundle]).andReturn(bundleMock);
-  OCMStub([bundleMock preferredLocalizations]).andReturn(@[
-    expectedAppLocale
-  ]);
+  OCMStub([bundleMock preferredLocalizations]).andReturn(@[ expectedAppLocale ]);
+  MSFlags expectedFlags = MSFlagsPersistenceNormal;
+  NSString *prefixedUserId = [NSString stringWithFormat:@"c:%@", self.sut.userId];
 
   // When
-  NSArray<MSCommonSchemaLog *> *csLogs = [self.sut toCommonSchemaLogs];
+  NSArray<MSCommonSchemaLog *> *csLogs = [self.sut toCommonSchemaLogsWithFlags:MSFlagsPersistenceNormal];
 
   // Then
   XCTAssertEqual(csLogs.count, expectedTokens.count);
@@ -257,6 +256,7 @@
     XCTAssertEqualObjects(log.ver, @"3.0");
     XCTAssertEqualObjects(self.sut.timestamp, log.timestamp);
     XCTAssertTrue([expectedIKeys containsObject:log.iKey]);
+    XCTAssertEqual(expectedFlags, log.flags);
 
     // Extension.
     XCTAssertNotNil(log.ext);
@@ -268,6 +268,7 @@
 
     // User extension.
     XCTAssertNotNil(log.ext.userExt);
+    XCTAssertEqualObjects(log.ext.userExt.localId, prefixedUserId);
     XCTAssertEqualObjects(log.ext.userExt.locale, expectedLocale);
 
     // OS extension.

@@ -17,12 +17,11 @@
     dict[kMSSDKInstallId] = [self.installId UUIDString];
   }
 
-  // The initial value corresponding to an epoch on a device should be 1, 0
-  // means no seq attributes.
+  // The initial value corresponding to an epoch on a device should be 1, 0 means no seq attributes.
   if (self.seq) {
     dict[kMSSDKSeq] = @(self.seq);
   }
-  return dict;
+  return dict.count == 0 ? nil : dict;
 }
 
 #pragma mark - MSModel
@@ -40,13 +39,9 @@
     return NO;
   }
   MSSDKExtension *sdkExt = (MSSDKExtension *)object;
-  return ((!self.libVer && !sdkExt.libVer) ||
-          [self.libVer isEqualToString:sdkExt.libVer]) &&
-         ((!self.epoch && !sdkExt.epoch) ||
-          [self.epoch isEqualToString:sdkExt.epoch]) &&
-         (self.seq == sdkExt.seq) &&
-         ((!self.installId && !sdkExt.installId) ||
-          [self.installId isEqual:sdkExt.installId]);
+  return ((!self.libVer && !sdkExt.libVer) || [self.libVer isEqualToString:sdkExt.libVer]) &&
+         ((!self.epoch && !sdkExt.epoch) || [self.epoch isEqualToString:sdkExt.epoch]) && (self.seq == sdkExt.seq) &&
+         ((!self.installId && !sdkExt.installId) || [self.installId isEqual:sdkExt.installId]);
 }
 
 #pragma mark - NSCoding
